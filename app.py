@@ -8,10 +8,13 @@ import streamlit as st
 from dotenv import load_dotenv
 from google import genai
 from google.genai.errors import ServerError
+from streamlit_folium import st_folium
+
 from tools.permits import get_nepal_trek_permit
 from tools.altitude import check_altitude_safety
-from streamlit_folium import st_folium
+from tools.weather import get_himalayan_weather
 from tools.map_builder import render_trail_map
+from tools.packing_generator import generate_packing_checklist
 
 load_dotenv()
 
@@ -39,12 +42,13 @@ with st.sidebar:
         "Choose Trekking Region",
         ["Annapurna", "Everest", "Langtang", "Manaslu"]
     )
-    trek_days = st.slider("Trip Duration (Days)", min_value=3, max_value=21, value=7)
+    trek_days = st.slider("Trip Duration (Days)", min_value=3, max_value=21, value=8)
     fitness_level = st.select_slider(
         "Fitness Level",
         options=["Beginner", "Moderate", "Experienced", "High Altitude Veteran"]
     )
-    generate_btn = st.button("Generate Safe Itinerary", type="primary", use_container_width=True)
+    # Using width="stretch" to comply with updated Streamlit standard
+    generate_btn = st.button("Generate Safe Itinerary", type="primary", width="stretch")
 
 
 def plot_altitude_chart(profile_data):
@@ -85,15 +89,19 @@ def plot_altitude_chart(profile_data):
     return fig
 
 
-# Main App Flow
+# Execution Flow
 if generate_btn:
-    with st.spinner("Agent is consulting permit fees, verifying route safety, and calculating elevation curves..."):
+    with st.spinner("Agent is checking permits, verifying altitude limits, fetching weather, and preparing gear checklist..."):
         prompt = (
             f"Plan a realistic {trek_days}-day trekking itinerary for the {selected_region} region in Nepal "
             f"for a person with '{fitness_level}' fitness level.\n"
-            f"You MUST use your custom tools: 'get_nepal_trek_permit' to check the exact permit fees, "
-            f"and 'check_altitude_safety' to verify that no single day's elevation gain exceeds safe limits above 3,000m.\n"
-            f"Provide the complete final itinerary in markdown format with permit breakdown.\n\n"
+            f"You MUST use your custom tools:\n"
+            f"1. 'get_nepal_trek_permit' to check the exact permit fees.\n"
+            f"2. 'check_altitude_safety' to verify safe altitude increments.\n"
+            f"3. 'get_himalayan_weather' to inspect real-time weather at the key hubs.\n"
+            f"4. 'generate_packing_checklist' to create a comprehensive, temperature-aware gear checklist.\n\n"
+            f"Provide the complete itinerary in markdown format with permit breakdown, live weather summary, "
+            f"and an organized packing checklist with checkboxes (- [ ] Item).\n\n"
             f"IMPORTANT: At the very end of your response, output a raw JSON block enclosed in ```json ``` "
             f"containing an array of objects for the elevation graph with keys: "
             f"'day_label' (e.g. 'Day 1: Pokhara to Hile') and 'elevation_m' (integer sleeping altitude in meters)."
@@ -107,7 +115,12 @@ if generate_btn:
                 chat = client.chats.create(
                     model=model_name,
                     config={
-                        "tools": [get_nepal_trek_permit, check_altitude_safety]
+                        "tools": [
+                            get_nepal_trek_permit,
+                            check_altitude_safety,
+                            get_himalayan_weather,
+                            generate_packing_checklist
+                        ]
                     }
                 )
                 response = chat.send_message(prompt)
@@ -136,7 +149,8 @@ if generate_btn:
                     st.divider()
                     st.subheader("📊 Elevation & High-Altitude Safety Profile")
                     fig = plot_altitude_chart(profile_data)
-                    st.plotly_chart(fig, use_container_width=True)
+                    # Modern width="stretch" replaces deprecated use_container_width
+                    st.plotly_chart(fig, width="stretch")
                 except Exception as err:
                     st.warning(f"Could not parse telemetry graph: {err}")
 
@@ -144,7 +158,7 @@ if generate_btn:
             st.divider()
             st.subheader("🗺️ Interactive Route & Waypoint Map")
             trail_map = render_trail_map(selected_region)
-            st_folium(trail_map, use_container_width=True, height=450, returned_objects=[])
+            st_folium(trail_map, width=None, height=450, returned_objects=[])
 
         else:
             st.warning("Google's servers are experiencing temporary peak traffic. Please click Generate again.")
