@@ -10,6 +10,8 @@ from google import genai
 from google.genai.errors import ServerError
 from tools.permits import get_nepal_trek_permit
 from tools.altitude import check_altitude_safety
+from streamlit_folium import st_folium
+from tools.map_builder import render_trail_map
 
 load_dotenv()
 
@@ -137,5 +139,12 @@ if generate_btn:
                     st.plotly_chart(fig, use_container_width=True)
                 except Exception as err:
                     st.warning(f"Could not parse telemetry graph: {err}")
+
+            # Render Interactive Route Map
+            st.divider()
+            st.subheader("🗺️ Interactive Route & Waypoint Map")
+            trail_map = render_trail_map(selected_region)
+            st_folium(trail_map, use_container_width=True, height=450, returned_objects=[])
+
         else:
             st.warning("Google's servers are experiencing temporary peak traffic. Please click Generate again.")
