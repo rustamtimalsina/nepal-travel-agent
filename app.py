@@ -60,6 +60,8 @@ with st.sidebar:
         "Trekking Budget Style",
         ["Standard", "Budget", "Comfort"]
     )
+    hire_guide = st.checkbox("Hire Licensed Guide (~$30/day)", value=True, help="Mandatory for foreign trekkers in ACAP, Langtang, and Manaslu.")
+    hire_porter = st.checkbox("Hire Porter (~$22/day)", value=False, help="Carries up to 18-20 kg of luggage.")
     # Using width="stretch" to comply with updated Streamlit standard
     generate_btn = st.button("Generate Safe Itinerary", type="primary", width="stretch")
 
@@ -107,13 +109,15 @@ if generate_btn:
     with st.spinner("Agent is checking permits, verifying altitude limits, fetching weather, and preparing gear checklist..."):
         prompt = (
             f"Plan a realistic {trek_days}-day trekking itinerary for the {selected_region} region in Nepal "
-            f"for a person with '{fitness_level}' fitness level and '{trekking_style}' budget style.\n"
+            f"for a trekker with '{fitness_level}' fitness level and '{trekking_style}' budget style.\n"
+            f"Staff configuration: Licensed Guide: {hire_guide}, Porter: {hire_porter}.\n"
             f"You MUST use your custom tools:\n"
-            f"1. 'get_nepal_trek_permit' to check the exact permit fees.\n"
-            f"2. 'check_altitude_safety' to verify safe altitude increments.\n"
+            f"1. 'get_nepal_trek_permit' to check regional permits and checkpoint requirements.\n"
+            f"2. 'check_altitude_safety' to verify safe altitude increments and acclimatization days.\n"
             f"3. 'get_himalayan_weather' to inspect real-time weather at the key hubs.\n"
             f"4. 'generate_packing_checklist' to create a comprehensive, temperature-aware gear checklist.\n"
-            f"5. 'calculate_teahouse_budget' to provide an itemized daily cost breakdown (NPR & USD) and emergency cash reserve.\n\n"
+            f"5. 'calculate_teahouse_budget' passing hire_guide={hire_guide} and hire_porter={hire_porter} "
+            f"to provide an itemized daily cost breakdown including staff wages (in NPR & USD) and cash reserve.\n\n"
             f"Provide the complete itinerary in markdown format with permit breakdown, live weather summary, "
             f"budget estimation breakdown, and an organized packing checklist with checkboxes (- [ ] Item).\n\n"
             f"IMPORTANT: At the very end of your response, output a raw JSON block enclosed in ```json ``` "
@@ -175,7 +179,6 @@ if generate_btn:
                     st.divider()
                     st.subheader("📊 Elevation & High-Altitude Safety Profile")
                     fig = plot_altitude_chart(profile_data)
-                    # Modern width="stretch" replaces deprecated use_container_width
                     st.plotly_chart(fig, width="stretch")
                 except Exception as err:
                     st.warning(f"Could not parse telemetry graph: {err}")
@@ -185,6 +188,5 @@ if generate_btn:
             st.subheader("🗺️ Interactive Route & Waypoint Map")
             trail_map = render_trail_map(selected_region)
             st_folium(trail_map, width=None, height=450, returned_objects=[])
-
         else:
             st.warning("Google's servers are experiencing temporary peak traffic. Please click Generate again.")
