@@ -1,3 +1,10 @@
+import sys
+from pathlib import Path
+
+# Force the project root directory into Python's module lookup path
+ROOT_DIR = Path(__file__).resolve().parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 import os
 import re
 import json
@@ -9,6 +16,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai.errors import ServerError
 from streamlit_folium import st_folium
+from tools.budget import calculate_teahouse_budget
 
 from tools.permits import get_nepal_trek_permit
 from tools.altitude import check_altitude_safety
@@ -46,6 +54,10 @@ with st.sidebar:
     fitness_level = st.select_slider(
         "Fitness Level",
         options=["Beginner", "Moderate", "Experienced", "High Altitude Veteran"]
+    )
+    trekking_style = st.selectbox(
+        "Trekking Budget Style",
+        ["Standard", "Budget", "Comfort"]
     )
     # Using width="stretch" to comply with updated Streamlit standard
     generate_btn = st.button("Generate Safe Itinerary", type="primary", width="stretch")
@@ -94,14 +106,15 @@ if generate_btn:
     with st.spinner("Agent is checking permits, verifying altitude limits, fetching weather, and preparing gear checklist..."):
         prompt = (
             f"Plan a realistic {trek_days}-day trekking itinerary for the {selected_region} region in Nepal "
-            f"for a person with '{fitness_level}' fitness level.\n"
+            f"for a person with '{fitness_level}' fitness level and '{trekking_style}' budget style.\n"
             f"You MUST use your custom tools:\n"
             f"1. 'get_nepal_trek_permit' to check the exact permit fees.\n"
             f"2. 'check_altitude_safety' to verify safe altitude increments.\n"
             f"3. 'get_himalayan_weather' to inspect real-time weather at the key hubs.\n"
-            f"4. 'generate_packing_checklist' to create a comprehensive, temperature-aware gear checklist.\n\n"
+            f"4. 'generate_packing_checklist' to create a comprehensive, temperature-aware gear checklist.\n"
+            f"5. 'calculate_teahouse_budget' to provide an itemized daily cost breakdown (NPR & USD) and emergency cash reserve.\n\n"
             f"Provide the complete itinerary in markdown format with permit breakdown, live weather summary, "
-            f"and an organized packing checklist with checkboxes (- [ ] Item).\n\n"
+            f"budget estimation breakdown, and an organized packing checklist with checkboxes (- [ ] Item).\n\n"
             f"IMPORTANT: At the very end of your response, output a raw JSON block enclosed in ```json ``` "
             f"containing an array of objects for the elevation graph with keys: "
             f"'day_label' (e.g. 'Day 1: Pokhara to Hile') and 'elevation_m' (integer sleeping altitude in meters)."
@@ -119,7 +132,8 @@ if generate_btn:
                             get_nepal_trek_permit,
                             check_altitude_safety,
                             get_himalayan_weather,
-                            generate_packing_checklist
+                            generate_packing_checklist,
+                            calculate_teahouse_budget
                         ]
                     }
                 )
