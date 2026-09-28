@@ -22,6 +22,7 @@ from tools.permits import get_nepal_trek_permit
 from tools.altitude import check_altitude_safety
 from tools.weather import get_himalayan_weather
 from tools.map_builder import render_trail_map
+from tools.pdf_exporter import generate_pdf_itinerary
 from tools.packing_generator import generate_packing_checklist
 
 load_dotenv()
@@ -155,6 +156,17 @@ if generate_btn:
             # Display Itinerary
             st.success("Itinerary Generated Successfully!")
             st.markdown(markdown_content)
+            pdf_bytes = generate_pdf_itinerary(
+                f"{selected_region} {trek_days}-Day Trek Itinerary",
+                markdown_content
+            )
+            st.download_button(
+                label="📄 Download Offline PDF Itinerary",
+                data=pdf_bytes,
+                file_name=f"{selected_region.lower()}_{trek_days}day_trek_plan.pdf",
+                mime="application/pdf",
+                width="stretch"
+            )
 
             # Render Chart if JSON was extracted
             if json_match:
